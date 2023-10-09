@@ -49,7 +49,8 @@ class Application:
             '4': self.__image.add_noise,
             '5': self.__image.filter,
             '6': self.__image.contrast,
-            '7': self.__image.get_edge_image,
+            '7': self.__image.get_edge,
+            '8': self.__image.apply_effect,
             '0': self.stop
         }
 

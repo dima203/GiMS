@@ -4,6 +4,7 @@ from random import randint
 
 from filter import MedianCrossFilter
 from contrast import LinearRowsContrast
+from effect import Effect
 from .utils import get_pixel_brightness
 
 
@@ -92,17 +93,32 @@ class Image:
         image_contrast.contrast(image)
         return image
 
-    def get_edge_image(self) -> "Image":
+    def get_edge(self) -> "Image":
         """Получить контур изображения"""
         if self.__image is None:
             print('Изображение не открыто')
             return self
         image = Image(self.__image, self.image_name + '*' if not self.image_name.endswith('*') else self.image_name)
         pixels = image.get_pixels()
-        e = image._get_threshold()
+        threshold = int(input('Введите порог отсечения по гистограмме: '))
+        e = image._get_threshold(threshold)
         for i in range(image.width):
             for j in range(image.height):
                 pixels[i, j] = (0, 0, 0) if get_pixel_brightness(pixels[i, j]) > e else (255, 255, 255)
+        return image
+
+
+    def apply_effect(self) -> "Image":
+        """Применить эффект"""
+        if self.__image is None:
+            print('Изображение не открыто')
+            return self
+        menu = self._get_menu(Effect)
+        self._print_menu(menu)
+        user_input = input('> ')
+        image = Image(self.__image, self.image_name + '*' if not self.image_name.endswith('*') else self.image_name)
+        effect = menu[user_input](image)
+        effect.apply()
         return image
 
     def get_pixels(self):
@@ -111,7 +127,7 @@ class Image:
     def copy(self) -> "Image":
         return Image(self.__image, self.image_name)
 
-    def _get_threshold(self) -> int:
+    def _get_threshold(self, threshold) -> int:
         pixels = self.get_pixels()
         brightness_map = [0 for _ in range(256)]
         pixels_count = self.width * self.height
@@ -121,6 +137,16 @@ class Image:
         brightness_map = list(map(lambda x: x / pixels_count, brightness_map))
         threshold_percent = 0
         for i, brightness_rate in enumerate(brightness_map):
-            threshold_percent += brightness_rate
-            if threshold_percent >= 0.8:
+            if threshold_percent >= (threshold / 100):
                 return i
+            threshold_percent += brightness_rate
+
+    def _get_menu(self, menu_class: type) -> dict[str]:
+        return {
+            str(i): cls for i, cls in enumerate(menu_class.__subclasses__())
+        }
+
+    def _print_menu(self, menu: dict[str]) -> None:
+        print(f'Выберите тип преобразования:')
+        for key, command in menu.items():
+            print(f'{key: <3} - {command.__doc__}')
