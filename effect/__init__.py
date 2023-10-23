@@ -1,1 +1,1 @@
-from .base import Effect
+from .effect import Effect

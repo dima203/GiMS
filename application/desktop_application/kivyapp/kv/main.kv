@@ -1,0 +1,68 @@
+<Item>
+    ImageLeftWidget:
+        source: root.source
+
+
+<SelectValueDialog>
+    pos_hint: {'center_x': .5, 'center_y': .5}
+    adaptive_height: True
+
+    MDSlider:
+        id: slider
+        value: root.value
+
+
+<WriteTextDialog>
+    pos_hint: {'center_x': .5, 'center_y': .5}
+    adaptive_height: True
+
+    MDTextField:
+        id: field
+        mode: 'rectangle'
+        text: root.value
+
+
+MDScreen:
+    MDBoxLayout:
+        orientation: 'horizontal'
+        spacing: 20
+        padding: 20
+
+        MDBoxLayout:
+            orientation: 'vertical'
+            size_hint: 0.25, None
+            spacing: 20
+            adaptive_height: True
+            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+
+            MDRectangleFlatButton:
+                text: 'Открыть'
+                size_hint_x: 1
+                on_press: app.open_image()
+            MDRectangleFlatButton:
+                text: 'Сохранить'
+                size_hint_x: 1
+                on_press: app.save_image()
+            MDRectangleFlatButton:
+                text: 'Добавить шум'
+                size_hint_x: 1
+                on_press: app.noise_image()
+            MDRectangleFlatButton:
+                text: 'Фильтрация'
+                size_hint_x: 1
+                on_press: app.filter_image()
+            MDRectangleFlatButton:
+                text: 'Контрастирование'
+                size_hint_x: 1
+                on_press: app.contrast_image()
+            MDRectangleFlatButton:
+                text: 'Выделение контура'
+                size_hint_x: 1
+                on_press: app.edge_image()
+            MDRectangleFlatButton:
+                text: 'Эффект'
+                size_hint_x: 1
+                on_press: app.effect_image()
+
+        Image:
+            id: image

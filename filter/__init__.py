@@ -1,1 +1,1 @@
-from .filter import Filter, MedianCrossFilter
+from .filter import Filter
