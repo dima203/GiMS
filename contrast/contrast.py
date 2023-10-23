@@ -1,3 +1,5 @@
+import cv2
+
 from abc import ABC, abstractmethod
 
 from image.utils import get_pixel_brightness
@@ -21,3 +23,13 @@ class LinearRowsContrast(Contrast):
                 current_bright = get_pixel_brightness(pixels_copy[i, j])
                 g = int(abs(prev_bright - current_bright))
                 pixels[i, j] = (g, g, g)
+
+
+class CannyContrast(Contrast):
+    def __init__(self, threshold1: int, threshold2: int) -> None:
+        self.threshold1 = threshold1
+        self.threshold2 = threshold2
+
+    def contrast(self, image: "Image") -> None:
+        a = cv2.Canny(image.get(), self.threshold1, self.threshold2)
+        image.set(a)

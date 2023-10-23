@@ -1,1 +1,1 @@
-from .contrast import Contrast, LinearRowsContrast
+from .contrast import Contrast, LinearRowsContrast, CannyContrast

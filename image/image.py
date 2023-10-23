@@ -1,9 +1,9 @@
-from PIL import Image as Img
+import cv2
 
 from random import randint
 
 from filter import MedianCrossFilter
-from contrast import LinearRowsContrast
+from contrast import CannyContrast
 from effect import Effect
 from .utils import get_pixel_brightness
 
@@ -12,15 +12,11 @@ class Image:
     base_images_dir = './images/'
     base_save_dir = './results/'
 
-    def __init__(self, image: Img.Image = None, image_name: str = '') -> None:
+    def __init__(self, image=None, image_name: str = '') -> None:
         if image is None:
             self.__image = None
         else:
             self.__image = image.copy()
-        if self.__image is not None:
-            self.width = self.__image.width
-            self.height = self.__image.height
-            self.__pixels = self.__image.load()
         self.image_name = image_name
 
     def get_image_name(self) -> str:
@@ -32,7 +28,7 @@ class Image:
         file_name = input('Введите имя файла: ')
         if not file_name.startswith(('/', './', '~/')):
             file_name = Image.base_images_dir + file_name
-        return Image(Img.open(file_name), file_name)
+        return Image(cv2.imread(file_name), file_name)
 
     def save(self) -> "Image":
         """Сохранить изображение"""
@@ -42,7 +38,7 @@ class Image:
         file_name = input('Введите имя файла: ')
         if not file_name.startswith(('/', './', '~/')):
             file_name = Image.base_save_dir + file_name
-        self.__image.save(file_name)
+        cv2.imwrite(file_name, self.__image)
         self.image_name = self.image_name if not self.image_name.endswith('*') else self.image_name[:-1]
         return self
 
@@ -51,7 +47,9 @@ class Image:
         if self.__image is None:
             print('Изображение не открыто')
             return self
-        self.__image.show()
+        cv2.imshow('image', self.__image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
         return self
 
     def add_noise(self) -> "Image":
@@ -61,12 +59,12 @@ class Image:
             return self
         probability = int(input('Введите вероятность шума: '))
         image = Image(self.__image, self.image_name+'*' if not self.image_name.endswith('*') else self.image_name)
-        pixels = image.get_pixels()
-        size = image.width * image.height
+        pixels = image.get()
+        size = pixels.shape[0] * pixels.shape[1]
         count = (size * probability) // 100
         for i in range(count):
-            x = randint(0, image.width - 1)
-            y = randint(0, image.height - 1)
+            x = randint(0, pixels.shape[0] - 1)
+            y = randint(0, pixels.shape[1] - 1)
             pixels[x, y] = (randint(0, 255), randint(0, 255), randint(0, 255))
         return image
 
@@ -75,11 +73,8 @@ class Image:
         if self.__image is None:
             print('Изображение не открыто')
             return self
-        window_width, window_height = map(int, input('Введите размер окна: ').split())
-        cross_x, cross_y = map(int, input('Введите центр креста (начиная с 0): ').split())
-        image_filter = MedianCrossFilter(window_width, window_height, cross_x, cross_y)
+        image_filter = MedianCrossFilter(7)
         image = Image(self.__image, self.image_name+'*' if not self.image_name.endswith('*') else self.image_name)
-        image_filter.input_window()
         image_filter.filter(image)
         return image
 
@@ -88,7 +83,7 @@ class Image:
         if self.__image is None:
             print('Изображение не открыто')
             return self
-        image_contrast = LinearRowsContrast()
+        image_contrast = CannyContrast(100, 200)
         image = Image(self.__image, self.image_name + '*' if not self.image_name.endswith('*') else self.image_name)
         image_contrast.contrast(image)
         return image
@@ -99,12 +94,12 @@ class Image:
             print('Изображение не открыто')
             return self
         image = Image(self.__image, self.image_name + '*' if not self.image_name.endswith('*') else self.image_name)
-        pixels = image.get_pixels()
+        pixels = image.get()
         threshold = int(input('Введите порог отсечения по гистограмме: '))
         e = image._get_threshold(threshold)
-        for i in range(image.width):
-            for j in range(image.height):
-                pixels[i, j] = (0, 0, 0) if get_pixel_brightness(pixels[i, j]) > e else (255, 255, 255)
+        for i in range(pixels.shape[0]):
+            for j in range(pixels.shape[1]):
+                pixels[i, j] = 0 if get_pixel_brightness(pixels[i, j]) > e else 2555
         return image
 
 
@@ -121,18 +116,21 @@ class Image:
         effect.apply()
         return image
 
-    def get_pixels(self):
-        return self.__pixels
+    def get(self):
+        return self.__image
+
+    def set(self, image):
+        self.__image = image
 
     def copy(self) -> "Image":
         return Image(self.__image, self.image_name)
 
     def _get_threshold(self, threshold) -> int:
-        pixels = self.get_pixels()
+        pixels = self.get()
         brightness_map = [0 for _ in range(256)]
-        pixels_count = self.width * self.height
-        for i in range(self.width):
-            for j in range(self.height):
+        pixels_count = pixels.shape[0] * pixels.shape[1]
+        for i in range(pixels.shape[0]):
+            for j in range(pixels.shape[1]):
                 brightness_map[get_pixel_brightness(pixels[i, j])] += 1
         brightness_map = list(map(lambda x: x / pixels_count, brightness_map))
         threshold_percent = 0
