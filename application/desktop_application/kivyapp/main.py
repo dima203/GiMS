@@ -11,6 +11,7 @@ from kivy.clock import Clock
 from kivy.properties import StringProperty, NumericProperty
 
 import cv2
+from cv2.data import haarcascades
 
 import os
 
@@ -36,10 +37,16 @@ class WriteTextDialog(MDBoxLayout):
 
 class MainApp(MDApp):
     kv_directory = './application/desktop_application/kivyapp/kv'
+    cascade_filter_front = haarcascades + 'haarcascade_frontalface_default.xml'
+    cascade_filter_profile = haarcascades + 'haarcascade_profileface.xml'
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.__image = imglib.image.Image()
+        self.__video: cv2.VideoCapture = None
+        self.__video_frame = None
+        self.video_filter_front = cv2.CascadeClassifier(self.cascade_filter_front)
+        self.video_filter_profile = cv2.CascadeClassifier(self.cascade_filter_profile)
 
         self.open_manager_open = False
         self.open_manager = MDFileManager(
@@ -49,6 +56,8 @@ class MainApp(MDApp):
         self.save_manager = MDFileManager(
             exit_manager=self.exit_save_manager, select_path=self.save_path, search='dirs'
         )
+        self._is_video = False
+        self._is_blur = False
 
     def build(self):
         self.theme_cls.theme_style = 'Dark'
@@ -58,12 +67,17 @@ class MainApp(MDApp):
         self.error_color = "#FF0000"
         self.save_color = '#00FF00'
 
-        Clock.schedule_interval(self.update_image, 0.25)
+        Clock.schedule_interval(self.update_image, 1/30)
 
     def update_image(self, dt) -> None:
-        buf = cv2.flip(self.__image.get(), 0)
+        if self._is_video:
+            frame = self.get_video_frame()
+            buf = cv2.flip(frame, 0)
+            texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='bgr')
+        else:
+            buf = cv2.flip(self.__image.get(), 0)
+            texture = Texture.create(size=(self.__image.width, self.__image.height), colorfmt='bgr')
         buf = buf.tostring()
-        texture = Texture.create(size=(self.__image.width, self.__image.height), colorfmt='bgr')
         texture.blit_buffer(buf, bufferfmt="ubyte", colorfmt="bgr")
         self.root.ids.image.texture = texture
 
@@ -78,6 +92,9 @@ class MainApp(MDApp):
     def open_path(self, path: str):
         self.exit_open_manager()
         self.__image = self.__image.open(path)
+        if self._is_video:
+            self.__video.release()
+        self._is_video = False
 
     def save_path(self, path: str):
         self.save_path = path
@@ -193,3 +210,44 @@ class MainApp(MDApp):
 
     def close_dialog(self, callback) -> None:
         self.dialog.dismiss()
+
+    def video_process(self) -> None:
+        self._is_video = True
+        self.__video = cv2.VideoCapture(0)
+
+    def get_video_frame(self) -> cv2.Mat:
+        _, frame = self.__video.read()
+        if not self._is_blur:
+            return frame
+
+        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        faces = self.video_filter_front.detectMultiScale(
+            gray_frame,
+            minNeighbors=5,
+            flags=cv2.CASCADE_SCALE_IMAGE,
+        )
+
+        faces2 = self.video_filter_profile.detectMultiScale(
+            gray_frame,
+            minNeighbors=5,
+            flags=cv2.CASCADE_SCALE_IMAGE,
+        )
+
+        blurred = frame.copy()
+
+        for (x, y, width, height) in faces:
+            blurred_part = cv2.blur(frame[y:y + height, x:x + width], ksize=(50, 50), )
+            blurred[y:y + height, x:x + width] = blurred_part
+
+        for (x, y, width, height) in faces2:
+            blurred_part = cv2.blur(frame[y:y + height, x:x + width], ksize=(50, 50), )
+            blurred[y:y + height, x:x + width] = blurred_part
+
+        return blurred
+
+    def enable_blur(self) -> None:
+        self._is_blur = True
+
+    def disable_blur(self) -> None:
+        self._is_blur = False

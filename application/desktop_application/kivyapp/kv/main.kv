@@ -63,6 +63,29 @@ MDScreen:
                 text: 'Эффект'
                 size_hint_x: 1
                 on_press: app.effect_image()
+            MDRectangleFlatButton:
+                text: 'Обработка видео'
+                size_hint_x: 1
+                on_press: app.video_process()
 
-        Image:
-            id: image
+        MDBoxLayout:
+            orientation: 'vertical'
+            Image:
+                size_hint_y: 0.9
+                id: image
+
+            MDBoxLayout:
+                spacing: 20
+                size_hint_y: 0.1
+                size_hint_x: 0.3
+                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+
+                MDRectangleFlatButton:
+                    text: 'Включить размытие'
+                    size_hint_x: 0.3
+                    on_press: app.enable_blur()
+
+                MDRectangleFlatButton:
+                    text: 'Выключить размытие'
+                    size_hint_x: 0.3
+                    on_press: app.disable_blur()
