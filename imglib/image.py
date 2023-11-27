@@ -73,7 +73,7 @@ class Image:
         pixels = image.get()
         size = image.width * image.height
         count = (size * noise_amount) // 100
-        for i in range(count):
+        for _ in range(count):
             x = randint(0, image.width - 1)
             y = randint(0, image.height - 1)
             pixels[y, x] = (randint(0, 255), randint(0, 255), randint(0, 255))

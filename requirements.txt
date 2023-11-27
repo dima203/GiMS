@@ -3,3 +3,4 @@ opencv-python==4.8.1.78
 numpy~=1.26.1
 kivymd~=1.1.1
 Kivy~=2.2.1
+pygame~=2.5.2
