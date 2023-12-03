@@ -1,6 +1,8 @@
 Pillow==10.1.0
 opencv-python==4.8.1.78
-numpy~=1.26.1
+numpy==1.26.2
 kivymd~=1.1.1
 Kivy~=2.2.1
 pygame~=2.5.2
+PyOpenGL~=3.1.7
+PyOpenGL-accelerate~=3.1.7
