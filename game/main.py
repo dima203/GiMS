@@ -7,6 +7,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
+
 SNAKES_COLORS = (
     ((0, 255, 0), (100, 255, 100)),
     ((0, 0, 255), (100, 100, 255)),
@@ -49,7 +50,7 @@ class Rectangle:
 
 
 class Brain:
-    queue: list[tuple[tuple[int, int], int, tuple[int, int]]]
+    queue: list[tuple[tuple[int, int], int, tuple[int, int], float]]
     checked: list[tuple[tuple[int, int], int, tuple[int, int]]]
     path: list[int]
 
@@ -70,7 +71,8 @@ class Brain:
             return
         while len(self.queue) > 0:
             path_finded = False
-            current_pos, step, prev_pos = self.queue.pop(0)
+            i, (current_pos, step, prev_pos, distance) = min(enumerate(self.queue), key=lambda x: x[1][3])
+            self.queue.pop(i)
             for food in FOODS:
                 if food.x == current_pos[0] and food.y == current_pos[1]:
                     while current_pos != (current_x, current_y):
@@ -97,7 +99,8 @@ class Brain:
                     if snake.check_overlap(*point):
                         break
                 else:
-                    self.queue.append((point, step, (current_x, current_y)))
+                    distance = min(((point[0] - food.x) ** 2 + (point[1] - food.y) ** 2)**0.5 for food in FOODS)
+                    self.queue.append((point, step, (current_x, current_y), distance))
         if current_y + 1 <= FIELD_HEIGHT - 1:
             step = 1
             point = (current_x, current_y + 1)
@@ -106,7 +109,8 @@ class Brain:
                     if snake.check_overlap(*point):
                         break
                 else:
-                    self.queue.append((point, step, (current_x, current_y)))
+                    distance = min(((point[0] - food.x) ** 2 + (point[1] - food.y) ** 2) ** 0.5 for food in FOODS)
+                    self.queue.append((point, step, (current_x, current_y), distance))
         if current_x + 1 <= FIELD_WIDTH - 1:
 
             step = 2
@@ -116,7 +120,8 @@ class Brain:
                     if snake.check_overlap(*point):
                         break
                 else:
-                    self.queue.append((point, step, (current_x, current_y)))
+                    distance = min(((point[0] - food.x) ** 2 + (point[1] - food.y) ** 2) ** 0.5 for food in FOODS)
+                    self.queue.append((point, step, (current_x, current_y), distance))
         if current_y - 1 >= 0:
             step = 3
             point = (current_x, current_y - 1)
@@ -125,7 +130,8 @@ class Brain:
                     if snake.check_overlap(*point):
                         break
                 else:
-                    self.queue.append((point, step, (current_x, current_y)))
+                    distance = min(((point[0] - food.x) ** 2 + (point[1] - food.y) ** 2) ** 0.5 for food in FOODS)
+                    self.queue.append((point, step, (current_x, current_y), distance))
 
 
 class Tail:
@@ -281,9 +287,9 @@ class SuperFood(Food):
     energy: int = 5
 
 
-WINDOW_SIZE = (1920, 1080)
+WINDOW_SIZE = (1920, 1020)
 FPS = 60
-TICK_TIME = 200
+TICK_TIME = 300
 CELL_SIZE = 30
 FIELD_WIDTH, FIELD_HEIGHT = WINDOW_SIZE[0] // CELL_SIZE, WINDOW_SIZE[1] // CELL_SIZE
 
@@ -302,12 +308,18 @@ def spawn_food() -> None:
     if len(FOODS) >= MAX_FOOD:
         return
 
-    food_x, food_y = randint(0, FIELD_WIDTH - 1), randint(0, FIELD_HEIGHT - 1)
-    if randint(0, 10) == 10:
-        food = SuperFood(food_x, food_y)
-    else:
-        food = Food(food_x, food_y)
-    FOODS.append(food)
+    for _ in range(5):
+        food_x, food_y = randint(0, FIELD_WIDTH - 1), randint(0, FIELD_HEIGHT - 1)
+        for snake in SNAKES:
+            if snake.check_overlap(food_x, food_y):
+                continue
+
+        if randint(0, 10) == 10:
+            food = SuperFood(food_x, food_y)
+        else:
+            food = Food(food_x, food_y)
+        FOODS.append(food)
+        break
 
 
 def game_end() -> None:
@@ -329,8 +341,9 @@ def main():
     glClearColor(0, 0, 0, 1)
 
     snake1 = Head(0, 0, 5, SNAKES_COLORS[0])
-    snake1.add_keys(pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d)
-    snake1.current_key = pygame.K_w
+    snake1.add_brain(Brain())
+    # snake1.add_keys(pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN, pygame.K_RIGHT)
+    # snake1.current_key = pygame.K_UP
     SNAKES.append(snake1)
 
     snake2 = Head(FIELD_WIDTH - 1, 0, 5, SNAKES_COLORS[1])
@@ -344,6 +357,10 @@ def main():
     snake4 = Head(0, FIELD_HEIGHT - 1, 5, SNAKES_COLORS[3])
     snake4.add_brain(Brain())
     SNAKES.append(snake4)
+
+    snake5 = Head(FIELD_WIDTH // 2, FIELD_HEIGHT // 2, 5, SNAKES_COLORS[4])
+    snake5.add_brain(Brain())
+    SNAKES.append(snake5)
 
     FOODS.append(Food(10, 10))
     FOODS.append(Food(FIELD_WIDTH - 10, 10))
