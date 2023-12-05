@@ -50,7 +50,7 @@ class Rectangle:
 
 
 class Brain:
-    queue: list[tuple[tuple[int, int], int, tuple[int, int], float]]
+    queue: list[tuple[tuple[int, int], int, tuple[int, int], float, int]]
     checked: list[tuple[tuple[int, int], int, tuple[int, int]]]
     path: list[int]
 
@@ -59,20 +59,21 @@ class Brain:
         self.checked = []
         self.path = []
 
-    def calculate_path(self, current_x: int, current_y: int, snakes: list["Head"], window) -> None:
+    def calculate_path(self, current_x: int, current_y: int, snakes: list["Head"]) -> None:
         self.queue.clear()
         self.checked.clear()
         self.path.clear()
 
-        self.__add_points(current_x, current_y, snakes)
+        self.__add_points(current_x, current_y, snakes, 0)
         self.checked.append(((current_x, current_y), 0, (0, 0)))
         if len(FOODS) == 0:
             self.path.append(self.queue.pop()[1])
             return
         while len(self.queue) > 0:
             path_finded = False
-            i, (current_pos, step, prev_pos, distance) = min(enumerate(self.queue), key=lambda x: x[1][3])
+            i, (current_pos, step, prev_pos, price, distance_to) = min((enumerate(self.queue)), key=lambda x: x[1][3])
             self.queue.pop(i)
+
             for food in FOODS:
                 if food.x == current_pos[0] and food.y == current_pos[1]:
                     while current_pos != (current_x, current_y):
@@ -85,53 +86,47 @@ class Brain:
                     break
             if path_finded:
                 break
-            self.__add_points(*current_pos, snakes)
+            self.__add_points(*current_pos, snakes, distance_to)
             self.checked.append((current_pos, step, prev_pos))
         else:
             self.path.append(choice(self.checked)[1])
 
-    def __add_points(self, current_x: int, current_y: int, snakes: list["Head"]):
+    def __add_points(self, current_x: int, current_y: int, snakes: list["Head"], steps: int):
+        added_points = []
         if current_x - 1 >= 0:
-            step = 0
             point = (current_x - 1, current_y)
-            if point not in map(lambda x: x[0], self.checked) and point not in map(lambda x: x[0], self.queue):
-                for snake in snakes:
-                    if snake.check_overlap(*point):
-                        break
-                else:
-                    distance = min(((point[0] - food.x) ** 2 + (point[1] - food.y) ** 2)**0.5 for food in FOODS)
-                    self.queue.append((point, step, (current_x, current_y), distance))
+            added_points.append(point)
+        else:
+            added_points.append(None)
         if current_y + 1 <= FIELD_HEIGHT - 1:
-            step = 1
             point = (current_x, current_y + 1)
-            if point not in map(lambda x: x[0], self.checked) and point not in map(lambda x: x[0], self.queue):
-                for snake in snakes:
-                    if snake.check_overlap(*point):
-                        break
-                else:
-                    distance = min(((point[0] - food.x) ** 2 + (point[1] - food.y) ** 2) ** 0.5 for food in FOODS)
-                    self.queue.append((point, step, (current_x, current_y), distance))
+            added_points.append(point)
+        else:
+            added_points.append(None)
         if current_x + 1 <= FIELD_WIDTH - 1:
-
-            step = 2
             point = (current_x + 1, current_y)
-            if point not in map(lambda x: x[0], self.checked) and point not in map(lambda x: x[0], self.queue):
-                for snake in snakes:
-                    if snake.check_overlap(*point):
-                        break
-                else:
-                    distance = min(((point[0] - food.x) ** 2 + (point[1] - food.y) ** 2) ** 0.5 for food in FOODS)
-                    self.queue.append((point, step, (current_x, current_y), distance))
+            added_points.append(point)
+        else:
+            added_points.append(None)
         if current_y - 1 >= 0:
-            step = 3
             point = (current_x, current_y - 1)
+            added_points.append(point)
+        else:
+            added_points.append(None)
+        for i, point in enumerate(added_points):
+            if point is None:
+                continue
             if point not in map(lambda x: x[0], self.checked) and point not in map(lambda x: x[0], self.queue):
                 for snake in snakes:
                     if snake.check_overlap(*point):
                         break
                 else:
-                    distance = min(((point[0] - food.x) ** 2 + (point[1] - food.y) ** 2) ** 0.5 for food in FOODS)
-                    self.queue.append((point, step, (current_x, current_y), distance))
+                    if len(FOODS) == 0:
+                        price = 0
+                    else:
+                        price = min((abs(point[0] - food.x) + abs(point[1] - food.y) + steps + 1) / food.energy
+                                    for food in FOODS)
+                    self.queue.insert(0, (point, i, (current_x, current_y), price, steps + 1))
 
 
 class Tail:
@@ -233,7 +228,7 @@ class Head(Tail):
             self.tail_length += 1
 
         if self.brain is not None:
-            self.brain.calculate_path(self.x, self.y, SNAKES, pygame.display.get_surface())
+            self.brain.calculate_path(self.x, self.y, SNAKES)
             self.current_key = self.brain.path.pop()
 
         self.keys[self.current_key]()
@@ -287,17 +282,22 @@ class SuperFood(Food):
     energy: int = 5
 
 
+class MegaFood(Food):
+    color: tuple[int, int, int] = (255, 160, 0)
+    energy: int = 15
+
+
 WINDOW_SIZE = (1920, 1020)
-FPS = 60
-TICK_TIME = 300
-CELL_SIZE = 30
+FPS = 30
+TICK_TIME = 50
+CELL_SIZE = 20
 FIELD_WIDTH, FIELD_HEIGHT = WINDOW_SIZE[0] // CELL_SIZE, WINDOW_SIZE[1] // CELL_SIZE
 
 TIME = 0
 FOOD_TIME = 0
-MAX_FOOD = 30
+MAX_FOOD = 40
 FOOD_SPAWN_RATE_IN_TICK = 4
-ENERGY_DECREASE_RATE_IN_TICK = 1000
+ENERGY_DECREASE_RATE_IN_TICK = 20
 FOODS: list[Food] = []
 SNAKES: list[Head] = []
 
@@ -314,7 +314,10 @@ def spawn_food() -> None:
             if snake.check_overlap(food_x, food_y):
                 continue
 
-        if randint(0, 10) == 10:
+        food_choice = randint(0, 100)
+        if food_choice > 100:
+            food = MegaFood(food_x, food_y)
+        elif food_choice > 100:
             food = SuperFood(food_x, food_y)
         else:
             food = Food(food_x, food_y)
@@ -328,7 +331,6 @@ def game_end() -> None:
 
 
 def main():
-    global SCORE
     global TIME
     global FOOD_TIME
     global SNAKES
@@ -361,11 +363,6 @@ def main():
     snake5 = Head(FIELD_WIDTH // 2, FIELD_HEIGHT // 2, 5, SNAKES_COLORS[4])
     snake5.add_brain(Brain())
     SNAKES.append(snake5)
-
-    FOODS.append(Food(10, 10))
-    FOODS.append(Food(FIELD_WIDTH - 10, 10))
-    FOODS.append(Food(FIELD_WIDTH - 1, FIELD_HEIGHT - 10))
-    FOODS.append(Food(10, FIELD_HEIGHT - 10))
 
     while True:
         for event in pygame.event.get():
