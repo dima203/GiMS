@@ -1,6 +1,6 @@
-from application import DesktopApp
+from opengl import Application
 
 
 if __name__ == '__main__':
-    app = DesktopApp()
+    app = Application()
     app.run()
